@@ -1,0 +1,116 @@
+diff --git a/public/scripts/extensions/stable-diffusion/index.js b/public/scripts/extensions/stable-diffusion/index.js
+index ccd476760..d6a5185a6 100644
+--- a/public/scripts/extensions/stable-diffusion/index.js
++++ b/public/scripts/extensions/stable-diffusion/index.js
+@@ -2471,6 +2471,14 @@ async function loadNovelModels() {
+             value: 'nai-diffusion-4-5-curated',
+             text: 'NAI Diffusion Anime V4.5 (Curated)',
+         },
++        {
++            value: 'nai-diffusion-5-full',
++            text: 'NAI Diffusion V5 (Full)',
++        },
++        {
++            value: 'nai-diffusion-5-curated',
++            text: 'NAI Diffusion V5 (Curated)',
++        },
+         {
+             value: 'nai-diffusion-4-full',
+             text: 'NAI Diffusion Anime V4 (Full)',
+diff --git a/src/endpoints/novelai.js b/src/endpoints/novelai.js
+index 0242c5785..2c139bef1 100644
+--- a/src/endpoints/novelai.js
++++ b/src/endpoints/novelai.js
+@@ -363,6 +363,13 @@ router.post('/generate-image', async (request, response) => {
+ 
+     try {
+         console.debug('NAI Diffusion request:', request.body);
++        const model = request.body.model ?? 'nai-diffusion';
++        const isV5 = model === 'nai-diffusion-5-full' || model === 'nai-diffusion-5-curated';
++        const sampler = request.body.sampler ?? 'k_dpmpp_2m';
++        const scale = request.body.scale ?? 9;
++        const seed = request.body.seed >= 0
++            ? request.body.seed
++            : Math.floor(Math.random() * (isV5 ? 0x100000000 : 9999999999));
+         const generateUrl = `${api.baseUrl ?? IMAGE_NOVELAI}/ai/generate-image`;
+         const generateResult = await fetch(generateUrl, {
+             ...api.options,
+@@ -374,48 +381,53 @@ router.post('/generate-image', async (request, response) => {
+             body: JSON.stringify({
+                 action: 'generate',
+                 input: request.body.prompt ?? '',
+-                model: request.body.model ?? 'nai-diffusion',
++                model,
+                 parameters: {
+-                    params_version: 3,
++                    params_version: isV5 ? 4 : 3,
+                     prefer_brownian: true,
+                     negative_prompt: request.body.negative_prompt ?? '',
+                     height: request.body.height ?? 512,
+                     width: request.body.width ?? 512,
+-                    scale: request.body.scale ?? 9,
+-                    seed: request.body.seed >= 0 ? request.body.seed : Math.floor(Math.random() * 9999999999),
+-                    sampler: request.body.sampler ?? 'k_dpmpp_2m',
+-                    noise_schedule: request.body.scheduler ?? 'karras',
++                    scale: isV5 ? Math.min(10, Math.max(1, scale)) : scale,
++                    seed: isV5 ? seed >>> 0 : seed,
++                    sampler: isV5 && ['ddim', 'k_dpm_fast'].includes(sampler) ? 'k_euler_ancestral' : sampler,
++                    noise_schedule: isV5 ? 'karras' : (request.body.scheduler ?? 'karras'),
+                     steps: request.body.steps ?? 28,
+                     n_samples: 1,
+-                    // NAI handholding for prompts
+-                    ucPreset: 0,
+-                    qualityToggle: false,
+-                    add_original_image: false,
+-                    controlnet_strength: 1,
+                     deliberate_euler_ancestral_bug: false,
+-                    dynamic_thresholding: request.body.decrisper ?? false,
++                    dynamic_thresholding: isV5 ? false : (request.body.decrisper ?? false),
+                     legacy: false,
+                     legacy_v3_extend: false,
+-                    sm: request.body.sm ?? false,
+-                    sm_dyn: request.body.sm_dyn ?? false,
+-                    uncond_scale: 1,
+-                    skip_cfg_above_sigma: request.body.variety_boost
+-                        ? calculateSkipCfgAboveSigma(
+-                            request.body.width ?? 512,
+-                            request.body.height ?? 512,
+-                            request.body.model ?? 'nai-diffusion',
+-                        )
+-                        : null,
++                    ...(isV5 ? {
++                        qualityPresetId: 'none',
++                        ucPresetId: 'none',
++                        cfg_rescale: 0,
++                        legacy_uc: false,
++                        straight_alpha: true,
++                        image_format: 'png',
++                    } : {
++                        ucPreset: 0,
++                        qualityToggle: false,
++                        add_original_image: false,
++                        controlnet_strength: 1,
++                        sm: request.body.sm ?? false,
++                        sm_dyn: request.body.sm_dyn ?? false,
++                        uncond_scale: 1,
++                        skip_cfg_above_sigma: request.body.variety_boost
++                            ? calculateSkipCfgAboveSigma(request.body.width ?? 512, request.body.height ?? 512, model)
++                            : null,
++                        reference_image_multiple: [],
++                        reference_information_extracted_multiple: [],
++                        reference_strength_multiple: [],
++                    }),
+                     use_coords: false,
+                     characterPrompts: [],
+-                    reference_image_multiple: [],
+-                    reference_information_extracted_multiple: [],
+-                    reference_strength_multiple: [],
+                     v4_negative_prompt: {
+                         caption: {
+                             base_caption: request.body.negative_prompt ?? '',
+                             char_captions: [],
+                         },
++                        ...(isV5 ? { legacy_uc: false } : {}),
+                     },
+                     v4_prompt: {
+                         caption: {
