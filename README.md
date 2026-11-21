@@ -4,15 +4,16 @@
 
 模型下拉框新增 **NAI Diffusion V5 (Full)** 和 **NAI Diffusion V5 (Curated)**。使用 Relay 时，V5 的体力和点数按密钥套餐结算。
 
-## 应用补丁
+## 安装或更新
 
-本补丁基于 [SillyTavern 1.19.1](https://github.com/SillyTavern/SillyTavern/tree/1.19.1)（`82b64a45c`）。在酒馆的 Git 仓库根目录打开终端，执行下列命令。检查通过后，再执行最后一行。
+本补丁已在 [SillyTavern 1.19.1](https://github.com/SillyTavern/SillyTavern/tree/1.19.1) 验证。首次安装和旧版更新使用同一套命令。在酒馆根目录（有 `server.js` 的文件夹）打开终端，逐行执行。脚本会检查源码并自动应用最新版，完成后重启酒馆并刷新浏览器。
 
-```sh
-git clone https://github.com/suzuka-suzuka/SillyTavern-NovelAI-Relay-Patch.git .nai-relay-patch
-git apply --check .nai-relay-patch/sillytavern-1.19.1.patch
-git apply .nai-relay-patch/sillytavern-1.19.1.patch
+```powershell
+curl.exe -fL https://raw.githubusercontent.com/suzuka-suzuka/SillyTavern-NovelAI-Relay-Patch/main/install.mjs -o .nai-relay-install.mjs
+node .nai-relay-install.mjs
 ```
+
+macOS 和 Linux 将第一行的 `curl.exe` 换成 `curl`。
 
 ## 使用
 
@@ -28,26 +29,13 @@ git apply .nai-relay-patch/sillytavern-1.19.1.patch
 /imagine extend=false cherry blossoms, blue sky
 ```
 
-## 撤销和升级
+## 撤销补丁
 
-已经应用过只提供 URL 输入框的旧版补丁时，进入酒馆根目录执行以下命令。检查通过后执行最后一行，然后重启酒馆并刷新浏览器。
-
-```sh
-git -C .nai-relay-patch pull --ff-only
-git apply --check .nai-relay-patch/sillytavern-1.19.1-v5-upgrade.patch
-git apply .nai-relay-patch/sillytavern-1.19.1-v5-upgrade.patch
-```
-
-### 撤销补丁
-
-在酒馆根目录执行下列命令。检查通过后，再执行最后一行。完成后重启酒馆并刷新浏览器。
+升级酒馆本体前，如需还原源码，在酒馆根目录运行下面这条命令。
 
 ```sh
-git apply --reverse --check .nai-relay-patch/sillytavern-1.19.1.patch
-git apply --reverse .nai-relay-patch/sillytavern-1.19.1.patch
+node .nai-relay-install.mjs --remove
 ```
-
-升级酒馆前先撤销补丁。升级后请使用与新版本对应的补丁。应用和撤销命令只修改酒馆源码。
 
 ## 许可证
 
